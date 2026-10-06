@@ -19,6 +19,8 @@ La lógica de detección vive en `src/core/` y no depende de React ni de las API
 | Señal                                     | Peso | Ejemplo                                     |
 | ----------------------------------------- | ---- | ------------------------------------------- |
 | Sin HTTPS                                 | 10   | `http://ejemplo.com`                        |
+| Hosting gratuito                          | 15   | `mi-tienda.vercel.app`, `usuario.github.io` |
+| Extensión de dominio de riesgo (TLD)      | 15   | `ofertas.xyz`, `promo.top`                  |
 | Dirección IP en lugar de dominio          | 30   | `http://192.168.1.10/login`                 |
 | Typosquatting (dominio mal escrito)       | 40   | `paypa1.com`, `gooogle.com`, `faceb00k.com` |
 | Suplantación de marca en un dominio ajeno | 50   | `www.paypal.com.cuenta-segura.xyz`          |
@@ -26,6 +28,7 @@ La lógica de detección vive en `src/core/` y no depende de React ni de las API
 ### Detalles técnicos
 
 - **Dominio registrado:** se obtiene con [`tldts`](https://github.com/remusao/tldts), que usa la Public Suffix List. Así, `checkout.paypal.com` se reconoce como legítimo y `paypal.com.cuenta-segura.xyz` no.
+- **Hosting gratuito:** se aprovecha que `tldts`, por defecto, trata dominios como `vercel.app` o `github.io` como el dominio registrado.
 - **Typosquatting:** se normalizan los homoglifos (`0 → o`, `1 → l`, `rn → m`, etc.) y luego se mide la [distancia de Levenshtein](https://es.wikipedia.org/wiki/Distancia_de_Levenshtein) contra una lista de marcas conocidas.
 
 ## Stack
@@ -34,6 +37,7 @@ La lógica de detección vive en `src/core/` y no depende de React ni de las API
 - Vite
 - Manifest V3
 - Vitest
+- ESLint + Prettier
 
 ## Instalación
 
@@ -48,10 +52,12 @@ Luego, en el navegador:
 2. Activar el **Modo desarrollador**.
 3. Hacer clic en **Cargar descomprimida** y seleccionar la carpeta `dist`.
 
-## Tests
+## Scripts
 
 ```bash
-npm test
+npm test         # Ejecuta los tests en modo observación
+npm run lint     # Revisa el código con ESLint
+npm run format   # Formatea el código con Prettier
 ```
 
 ## Estructura
@@ -71,7 +77,8 @@ src/
 
 - [x] Popup que muestra la URL de la pestaña activa
 - [x] Analizador de URL con puntaje y motivos
-- [ ] Más señales de URL: hosting gratuito, TLDs de riesgo, palabras gancho, punycode
+- [x] Señales de hosting gratuito y TLDs de riesgo
+- [ ] Más señales de URL: palabras gancho, punycode, `@` en la URL, exceso de guiones
 - [ ] Content script que analiza el contenido de la página (formularios de login, tarjetas)
 - [ ] Service worker con indicador de riesgo en el ícono
 - [ ] Backend para consultas de WHOIS, certificados SSL y listas negras
