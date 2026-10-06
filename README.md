@@ -75,10 +75,14 @@ src/
 - [ ] Content script que analiza el contenido de la página (formularios de login, tarjetas)
 - [ ] Service worker con indicador de riesgo en el ícono
 - [ ] Backend para consultas de WHOIS, certificados SSL y listas negras
-- [ ] Modelo de machine learning (opcional)
+- [ ] Modelo de machine learning
 
 ## Limitaciones conocidas
 
 - La lista de marcas y dominios oficiales es reducida.
 - El umbral de typosquatting es fijo, lo que puede generar falsos positivos con marcas de nombre corto.
 - Algunas URLs pueden activar varias señales relacionadas a la vez, lo que infla el puntaje.
+
+## Autor
+
+Desarrollado por **Bryan Gallardo**.
