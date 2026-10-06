@@ -16,12 +16,12 @@ La lógica de detección vive en `src/core/` y no depende de React ni de las API
 
 ## Señales detectadas
 
-| Señal | Peso | Ejemplo |
-|---|---|---|
-| Sin HTTPS | 10 | `http://ejemplo.com` |
-| Dirección IP en lugar de dominio | 30 | `http://192.168.1.10/login` |
-| Typosquatting (dominio mal escrito) | 40 | `paypa1.com`, `gooogle.com`, `faceb00k.com` |
-| Suplantación de marca en un dominio ajeno | 50 | `www.paypal.com.cuenta-segura.xyz` |
+| Señal                                     | Peso | Ejemplo                                     |
+| ----------------------------------------- | ---- | ------------------------------------------- |
+| Sin HTTPS                                 | 10   | `http://ejemplo.com`                        |
+| Dirección IP en lugar de dominio          | 30   | `http://192.168.1.10/login`                 |
+| Typosquatting (dominio mal escrito)       | 40   | `paypa1.com`, `gooogle.com`, `faceb00k.com` |
+| Suplantación de marca en un dominio ajeno | 50   | `www.paypal.com.cuenta-segura.xyz`          |
 
 ### Detalles técnicos
 

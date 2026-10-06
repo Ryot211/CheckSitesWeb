@@ -11,7 +11,11 @@ function App() {
   }, [])
 
   if (url === null) {
-    return <main><p>Analizando...</p></main>
+    return (
+      <main>
+        <p>Analizando...</p>
+      </main>
+    )
   }
 
   if (!url.startsWith('http')) {

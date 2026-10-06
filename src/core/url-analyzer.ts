@@ -17,7 +17,7 @@ interface ParsedUrl {
   hostname: string
   registrableDomain: string
   domainName: string
-  publicSuffix: string        // ← nuevo
+  publicSuffix: string // ← nuevo
 }
 
 function parseUrl(rawUrl: string): ParsedUrl {
@@ -100,10 +100,10 @@ function isFreeHosting(registrableDomain: string): boolean {
   return FREE_HOSTING_DOMAINS.includes(registrableDomain)
 }
 const SUSPICIOUS_TLDS = ['xyz', 'top', 'click', 'zip', 'tk', 'buzz']
-  function isSuspiciousTld(publicSuffix: string): boolean {
-         return SUSPICIOUS_TLDS.includes(publicSuffix)
+function isSuspiciousTld(publicSuffix: string): boolean {
+  return SUSPICIOUS_TLDS.includes(publicSuffix)
 }
-  
+
 export function analyzeUrl(rawUrl: string): UrlAnalysis {
   const parsed = parseUrl(rawUrl)
   const signals: Signal[] = []
@@ -120,7 +120,8 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
     signals.push({
       id: 'ip-address',
       weight: 30,
-      message: 'El sitio usa una dirección IP en lugar de un nombre de dominio.',
+      message:
+        'El sitio usa una dirección IP en lugar de un nombre de dominio.',
     })
   }
 
@@ -151,15 +152,14 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
       message: 'El sitio está alojado en un servicio de hosting gratuito.',
     })
   }
-  
-  if(isSuspiciousTld(parsed.publicSuffix)){
+
+  if (isSuspiciousTld(parsed.publicSuffix)) {
     signals.push({
-        id:'suspicious-tld',
-        weight:15,
-        message:'El sitio usa una extension de dominio frecuente en fraudes.',
+      id: 'suspicious-tld',
+      weight: 15,
+      message: 'El sitio usa una extension de dominio frecuente en fraudes.',
     })
   }
-  
 
   const score = Math.min(
     100,

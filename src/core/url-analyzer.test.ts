@@ -2,19 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { analyzeUrl } from './url-analyzer'
 
 describe('analyzeUrl', () => {
-
   it('marca los sitios con una extensión de dominio de riesgo', () => {
     const result = analyzeUrl('https://ofertas.xyz')
 
     expect(result.signals.map((s) => s.id)).toContain('suspicious-tld')
   })
-it('No marca los sitios con una extension de dominio ',()=>{
-  const result = analyzeUrl('https://apple.com')
+  it('No marca los sitios con una extension de dominio ', () => {
+    const result = analyzeUrl('https://apple.com')
 
-  expect(result.signals.map((s)=> s.id)).not.toContain('suspicious-tld')
-})
+    expect(result.signals.map((s) => s.id)).not.toContain('suspicious-tld')
+  })
 
-    it('marca los sitios alojados en un hosting gratuito', () => {
+  it('marca los sitios alojados en un hosting gratuito', () => {
     const result = analyzeUrl('https://mi-tienda.vercel.app')
 
     expect(result.signals.map((s) => s.id)).toContain('free-hosting')
@@ -31,7 +30,7 @@ it('No marca los sitios con una extension de dominio ',()=>{
 
     expect(result.signals.map((s) => s.id)).not.toContain('free-hosting')
   })
-    it('marca dominios con una letra cambiada por un número', () => {
+  it('marca dominios con una letra cambiada por un número', () => {
     const result = analyzeUrl('https://paypa1.com')
 
     expect(result.signals.map((s) => s.id)).toContain('typosquatting')
@@ -60,7 +59,7 @@ it('No marca los sitios con una extension de dominio ',()=>{
 
     expect(result.signals.map((s) => s.id)).not.toContain('typosquatting')
   })
-    it('marca los sitios que usan una marca conocida en un dominio ajeno', () => {
+  it('marca los sitios que usan una marca conocida en un dominio ajeno', () => {
     const result = analyzeUrl('https://www.paypal.com.cuenta-segura.xyz/login')
 
     expect(result.signals.map((s) => s.id)).toContain('brand-impersonation')
