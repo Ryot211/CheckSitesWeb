@@ -12,6 +12,24 @@ export interface UrlAnalysis {
   signals: Signal[]
 }
 
+interface ParsedUrl {
+  protocol: string
+  hostname: string
+  registrableDomain: string
+  domainName: string
+}
+
+function parseUrl(rawUrl: string): ParsedUrl {
+  const url = new URL(rawUrl)
+
+  return {
+    protocol: url.protocol,
+    hostname: url.hostname,
+    registrableDomain: getDomain(url.hostname) ?? '',
+    domainName: getDomainWithoutSuffix(url.hostname) ?? '',
+  }
+}
+
 const IPV4_PATTERN = /^\d{1,3}(\.\d{1,3}){3}$/
 
 function isIpAddress(hostname: string): boolean {
@@ -24,15 +42,14 @@ const KNOWN_BRANDS = [
   { name: 'facebook', domains: ['facebook.com'] },
 ]
 
-function findImpersonatedBrand(hostname: string) {
-  const registrableDomain = getDomain(hostname) ?? ''
-
+function findImpersonatedBrand(parsed: ParsedUrl) {
   return KNOWN_BRANDS.find(
     (brand) =>
-      hostname.includes(brand.name) &&
-      !brand.domains.includes(registrableDomain),
+      parsed.hostname.includes(brand.name) &&
+      !brand.domains.includes(parsed.registrableDomain),
   )
 }
+
 const HOMOGLYPHS: Record<string, string> = {
   '0': 'o',
   '1': 'l',
@@ -53,28 +70,39 @@ function normalizeHomoglyphs(text: string): string {
   return normalized
 }
 
-function findTyposquattedBrand(hostname: string) {
-  const domainName = getDomainWithoutSuffix(hostname)
-  const registrableDomain = getDomain(hostname) ?? ''
-
-  if (!domainName) {
+function findTyposquattedBrand(parsed: ParsedUrl) {
+  if (!parsed.domainName) {
     return undefined
   }
 
-  const normalizedName = normalizeHomoglyphs(domainName)
+  const normalizedName = normalizeHomoglyphs(parsed.domainName)
 
   return KNOWN_BRANDS.find(
     (brand) =>
-      !brand.domains.includes(registrableDomain) &&
+      !brand.domains.includes(parsed.registrableDomain) &&
       levenshtein(normalizedName, brand.name) <= 2,
   )
 }
 
+const FREE_HOSTING_DOMAINS = [
+  'vercel.app',
+  'netlify.app',
+  'github.io',
+  'pages.dev',
+  'web.app',
+  'firebaseapp.com',
+  'onrender.com',
+]
+
+function isFreeHosting(registrableDomain: string): boolean {
+  return FREE_HOSTING_DOMAINS.includes(registrableDomain)
+}
+
 export function analyzeUrl(rawUrl: string): UrlAnalysis {
-  const url = new URL(rawUrl)
+  const parsed = parseUrl(rawUrl)
   const signals: Signal[] = []
 
-  if (url.protocol === 'http:') {
+  if (parsed.protocol === 'http:') {
     signals.push({
       id: 'no-https',
       weight: 10,
@@ -82,14 +110,15 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
     })
   }
 
-  if (isIpAddress(url.hostname)) {
+  if (isIpAddress(parsed.hostname)) {
     signals.push({
       id: 'ip-address',
       weight: 30,
       message: 'El sitio usa una dirección IP en lugar de un nombre de dominio.',
     })
   }
-    const impersonatedBrand = findImpersonatedBrand(url.hostname)
+
+  const impersonatedBrand = findImpersonatedBrand(parsed)
 
   if (impersonatedBrand) {
     signals.push({
@@ -98,13 +127,22 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
       message: `El sitio menciona "${impersonatedBrand.name}" pero no pertenece a su dominio oficial.`,
     })
   }
-    const typosquattedBrand = findTyposquattedBrand(url.hostname)
+
+  const typosquattedBrand = findTyposquattedBrand(parsed)
 
   if (typosquattedBrand) {
     signals.push({
       id: 'typosquatting',
       weight: 40,
       message: `El dominio se parece sospechosamente a "${typosquattedBrand.name}".`,
+    })
+  }
+
+  if (isFreeHosting(parsed.registrableDomain)) {
+    signals.push({
+      id: 'free-hosting',
+      weight: 15,
+      message: 'El sitio está alojado en un servicio de hosting gratuito.',
     })
   }
 

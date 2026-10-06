@@ -2,6 +2,23 @@ import { describe, expect, it } from 'vitest'
 import { analyzeUrl } from './url-analyzer'
 
 describe('analyzeUrl', () => {
+    it('marca los sitios alojados en un hosting gratuito', () => {
+    const result = analyzeUrl('https://mi-tienda.vercel.app')
+
+    expect(result.signals.map((s) => s.id)).toContain('free-hosting')
+  })
+
+  it('marca los sitios de GitHub Pages', () => {
+    const result = analyzeUrl('https://usuario.github.io/login')
+
+    expect(result.signals.map((s) => s.id)).toContain('free-hosting')
+  })
+
+  it('no marca los sitios con dominio propio', () => {
+    const result = analyzeUrl('https://example.com')
+
+    expect(result.signals.map((s) => s.id)).not.toContain('free-hosting')
+  })
     it('marca dominios con una letra cambiada por un número', () => {
     const result = analyzeUrl('https://paypa1.com')
 
