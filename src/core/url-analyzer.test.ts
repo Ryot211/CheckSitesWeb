@@ -2,6 +2,35 @@ import { describe, expect, it } from 'vitest'
 import { analyzeUrl } from './url-analyzer'
 
 describe('analyzeUrl', () => {
+    it('marca dominios con una letra cambiada por un número', () => {
+    const result = analyzeUrl('https://paypa1.com')
+
+    expect(result.signals.map((s) => s.id)).toContain('typosquatting')
+  })
+
+  it('marca dominios con una letra de más', () => {
+    const result = analyzeUrl('https://gooogle.com')
+
+    expect(result.signals.map((s) => s.id)).toContain('typosquatting')
+  })
+
+  it('marca dominios que reemplazan letras por números parecidos', () => {
+    const result = analyzeUrl('https://faceb00k.com')
+
+    expect(result.signals.map((s) => s.id)).toContain('typosquatting')
+  })
+
+  it('no marca el dominio real de la marca', () => {
+    const result = analyzeUrl('https://paypal.com')
+
+    expect(result.signals.map((s) => s.id)).not.toContain('typosquatting')
+  })
+
+  it('no marca dominios que no se parecen a ninguna marca', () => {
+    const result = analyzeUrl('https://amazon.com')
+
+    expect(result.signals.map((s) => s.id)).not.toContain('typosquatting')
+  })
     it('marca los sitios que usan una marca conocida en un dominio ajeno', () => {
     const result = analyzeUrl('https://www.paypal.com.cuenta-segura.xyz/login')
 

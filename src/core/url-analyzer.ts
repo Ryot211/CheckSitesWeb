@@ -1,4 +1,5 @@
-import { getDomain } from "tldts"
+import { getDomain, getDomainWithoutSuffix } from 'tldts'
+import { levenshtein } from './levenshtein'
 
 export interface Signal {
   id: string
@@ -32,6 +33,43 @@ function findImpersonatedBrand(hostname: string) {
       !brand.domains.includes(registrableDomain),
   )
 }
+const HOMOGLYPHS: Record<string, string> = {
+  '0': 'o',
+  '1': 'l',
+  '3': 'e',
+  '4': 'a',
+  '5': 's',
+  rn: 'm',
+  vv: 'w',
+}
+
+function normalizeHomoglyphs(text: string): string {
+  let normalized = text
+
+  for (const [lookalike, original] of Object.entries(HOMOGLYPHS)) {
+    normalized = normalized.replaceAll(lookalike, original)
+  }
+
+  return normalized
+}
+
+function findTyposquattedBrand(hostname: string) {
+  const domainName = getDomainWithoutSuffix(hostname)
+  const registrableDomain = getDomain(hostname) ?? ''
+
+  if (!domainName) {
+    return undefined
+  }
+
+  const normalizedName = normalizeHomoglyphs(domainName)
+
+  return KNOWN_BRANDS.find(
+    (brand) =>
+      !brand.domains.includes(registrableDomain) &&
+      levenshtein(normalizedName, brand.name) <= 2,
+  )
+}
+
 export function analyzeUrl(rawUrl: string): UrlAnalysis {
   const url = new URL(rawUrl)
   const signals: Signal[] = []
@@ -58,6 +96,15 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
       id: 'brand-impersonation',
       weight: 50,
       message: `El sitio menciona "${impersonatedBrand.name}" pero no pertenece a su dominio oficial.`,
+    })
+  }
+    const typosquattedBrand = findTyposquattedBrand(url.hostname)
+
+  if (typosquattedBrand) {
+    signals.push({
+      id: 'typosquatting',
+      weight: 40,
+      message: `El dominio se parece sospechosamente a "${typosquattedBrand.name}".`,
     })
   }
 
