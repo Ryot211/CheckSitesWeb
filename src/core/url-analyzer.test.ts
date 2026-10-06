@@ -2,6 +2,23 @@ import { describe, expect, it } from 'vitest'
 import { analyzeUrl } from './url-analyzer'
 
 describe('analyzeUrl', () => {
+    it('marca los sitios que usan una marca conocida en un dominio ajeno', () => {
+    const result = analyzeUrl('https://www.paypal.com.cuenta-segura.xyz/login')
+
+    expect(result.signals.map((s) => s.id)).toContain('brand-impersonation')
+  })
+
+  it('no marca el dominio oficial de la marca', () => {
+    const result = analyzeUrl('https://www.paypal.com/signin')
+
+    expect(result.signals.map((s) => s.id)).not.toContain('brand-impersonation')
+  })
+
+  it('no marca los subdominios del dominio oficial', () => {
+    const result = analyzeUrl('https://checkout.paypal.com/pay')
+
+    expect(result.signals.map((s) => s.id)).not.toContain('brand-impersonation')
+  })
   it('marca los sitios sin HTTPS', () => {
     const result = analyzeUrl('http://example.com')
 
