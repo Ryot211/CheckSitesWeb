@@ -1,4 +1,4 @@
-import { getDomain, getDomainWithoutSuffix } from 'tldts'
+import { getDomain, getDomainWithoutSuffix, getPublicSuffix } from 'tldts'
 import { levenshtein } from './levenshtein'
 
 export interface Signal {
@@ -17,6 +17,7 @@ interface ParsedUrl {
   hostname: string
   registrableDomain: string
   domainName: string
+  publicSuffix: string        // ← nuevo
 }
 
 function parseUrl(rawUrl: string): ParsedUrl {
@@ -25,6 +26,7 @@ function parseUrl(rawUrl: string): ParsedUrl {
   return {
     protocol: url.protocol,
     hostname: url.hostname,
+    publicSuffix: getPublicSuffix(url.hostname) ?? '',
     registrableDomain: getDomain(url.hostname) ?? '',
     domainName: getDomainWithoutSuffix(url.hostname) ?? '',
   }
@@ -97,7 +99,11 @@ const FREE_HOSTING_DOMAINS = [
 function isFreeHosting(registrableDomain: string): boolean {
   return FREE_HOSTING_DOMAINS.includes(registrableDomain)
 }
-
+const SUSPICIOUS_TLDS = ['xyz', 'top', 'click', 'zip', 'tk', 'buzz']
+  function isSuspiciousTld(publicSuffix: string): boolean {
+         return SUSPICIOUS_TLDS.includes(publicSuffix)
+}
+  
 export function analyzeUrl(rawUrl: string): UrlAnalysis {
   const parsed = parseUrl(rawUrl)
   const signals: Signal[] = []
@@ -145,6 +151,15 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
       message: 'El sitio está alojado en un servicio de hosting gratuito.',
     })
   }
+  
+  if(isSuspiciousTld(parsed.publicSuffix)){
+    signals.push({
+        id:'suspicious-tld',
+        weight:15,
+        message:'El sitio usa una extension de dominio frecuente en fraudes.',
+    })
+  }
+  
 
   const score = Math.min(
     100,

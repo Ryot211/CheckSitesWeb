@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest'
 import { analyzeUrl } from './url-analyzer'
 
 describe('analyzeUrl', () => {
+
+  it('marca los sitios con una extensión de dominio de riesgo', () => {
+    const result = analyzeUrl('https://ofertas.xyz')
+
+    expect(result.signals.map((s) => s.id)).toContain('suspicious-tld')
+  })
+it('No marca los sitios con una extension de dominio ',()=>{
+  const result = analyzeUrl('https://apple.com')
+
+  expect(result.signals.map((s)=> s.id)).not.toContain('suspicious-tld')
+})
+
     it('marca los sitios alojados en un hosting gratuito', () => {
     const result = analyzeUrl('https://mi-tienda.vercel.app')
 
