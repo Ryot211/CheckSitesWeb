@@ -1,0 +1,13 @@
+body {
+  margin: 0;
+  width: 320px;
+  font-family: system-ui, sans-serif;
+}
+
+main {
+  padding: 16px;
+}
+
+p {
+  word-break: break-all;
+}

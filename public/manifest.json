@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Detector de Sitios Falsos",
+  "version": "0.1.0",
+  "description": "Detectar sitios sospechosos.",
+  "action": {
+    "default_popup": "index.html"
+  },
+  "permissions": ["activeTab"]
+}
