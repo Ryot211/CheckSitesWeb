@@ -99,4 +99,22 @@ describe('analyzeUrl', () => {
 
     expect(result.signals.map((s) => s.id)).not.toContain('ip-address')
   })
+
+  it('marca las URLs que ocultan el destino con un @', () => {
+    const result = analyzeUrl('https://www.paypal.com@cuenta-segura.xyz/login')
+
+    expect(result.signals.map((s) => s.id)).toContain('credentials-in-url')
+  })
+
+  it('no marca las URLs sin @', () => {
+    const result = analyzeUrl('https://www.paypal.com/signin')
+
+    expect(result.signals.map((s) => s.id)).not.toContain('credentials-in-url')
+  })
+
+  it('marca el @ aunque el dominio tenga una extensión común', () => {
+    const result = analyzeUrl('https://www.paypal.com@cuenta-segura.com/login')
+
+    expect(result.signals.map((s) => s.id)).toContain('credentials-in-url')
+  })
 })

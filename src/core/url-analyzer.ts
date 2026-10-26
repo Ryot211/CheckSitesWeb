@@ -17,7 +17,8 @@ interface ParsedUrl {
   hostname: string
   registrableDomain: string
   domainName: string
-  publicSuffix: string // ← nuevo
+  publicSuffix: string
+  username: string
 }
 
 function parseUrl(rawUrl: string): ParsedUrl {
@@ -29,6 +30,7 @@ function parseUrl(rawUrl: string): ParsedUrl {
     publicSuffix: getPublicSuffix(url.hostname) ?? '',
     registrableDomain: getDomain(url.hostname) ?? '',
     domainName: getDomainWithoutSuffix(url.hostname) ?? '',
+    username: url.username,
   }
 }
 
@@ -99,7 +101,9 @@ const FREE_HOSTING_DOMAINS = [
 function isFreeHosting(registrableDomain: string): boolean {
   return FREE_HOSTING_DOMAINS.includes(registrableDomain)
 }
+
 const SUSPICIOUS_TLDS = ['xyz', 'top', 'click', 'zip', 'tk', 'buzz']
+
 function isSuspiciousTld(publicSuffix: string): boolean {
   return SUSPICIOUS_TLDS.includes(publicSuffix)
 }
@@ -157,7 +161,15 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
     signals.push({
       id: 'suspicious-tld',
       weight: 15,
-      message: 'El sitio usa una extension de dominio frecuente en fraudes.',
+      message: 'El sitio usa una extensión de dominio frecuente en fraudes.',
+    })
+  }
+
+  if (parsed.username !== '') {
+    signals.push({
+      id: 'credentials-in-url',
+      weight: 35,
+      message: 'La URL oculta el destino real usando un "@".',
     })
   }
 
