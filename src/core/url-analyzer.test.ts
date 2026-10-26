@@ -167,3 +167,57 @@ describe('analyzeUrl', () => {
     expect(result.signals.map((s) => s.id)).not.toContain('many-hyphens')
   })
 })
+
+describe('analyzeUrl con casos reales (v1.1)', () => {
+  const idsOf = (url: string) => analyzeUrl(url).signals.map((s) => s.id)
+
+  it('detecta typosquatting de bancos de Ecuador', () => {
+    expect(idsOf('https://bancopichlncha.com')).toContain('typosquatting')
+  })
+
+  it('detecta un banco de Ecuador mencionado en un dominio ajeno', () => {
+    expect(idsOf('https://pichincha-banca-segura.com/login')).toContain(
+      'brand-impersonation',
+    )
+  })
+
+  it('detecta marcas globales con números en lugar de letras', () => {
+    expect(idsOf('https://amaz0n.com')).toContain('typosquatting')
+  })
+
+  it('detecta marcas globales en un dominio ajeno', () => {
+    expect(idsOf('https://www.netflix-pagos.com')).toContain(
+      'brand-impersonation',
+    )
+  })
+
+  it('no marca los dominios oficiales de los bancos', () => {
+    expect(analyzeUrl('https://www.pichincha.com').score).toBe(0)
+    expect(analyzeUrl('https://www.bancodelpacifico.com').score).toBe(0)
+    expect(analyzeUrl('https://intermatico.com').score).toBe(0)
+  })
+
+  it('no marca una marca que aparece dentro de otra palabra', () => {
+    expect(idsOf('https://amazonas-turismo.com')).not.toContain(
+      'brand-impersonation',
+    )
+    expect(idsOf('https://amazonas.com')).not.toContain('typosquatting')
+  })
+
+  it('no aplica las reglas de marca a dominios de registro restringido', () => {
+    expect(analyzeUrl('https://www.pichincha.gob.ec').score).toBe(0)
+  })
+
+  it('reconoce palabras gancho por su raíz', () => {
+    expect(idsOf('https://cuenta-segura.com')).toContain('suspicious-keyword')
+    expect(idsOf('https://verificacion-datos.com')).toContain(
+      'suspicious-keyword',
+    )
+  })
+
+  it('no marca palabras gancho en los dominios oficiales de una marca', () => {
+    expect(idsOf('https://accounts.google.com/signin')).not.toContain(
+      'suspicious-keyword',
+    )
+  })
+})

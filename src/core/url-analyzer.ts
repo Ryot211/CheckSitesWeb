@@ -1,4 +1,5 @@
 import { getDomain, getDomainWithoutSuffix, getPublicSuffix } from 'tldts'
+import { KNOWN_BRANDS, RESTRICTED_SUFFIXES, type Brand } from './brands'
 import { levenshtein } from './levenshtein'
 import { calculateScore } from './score'
 
@@ -41,17 +42,29 @@ function isIpAddress(hostname: string): boolean {
   return IPV4_PATTERN.test(hostname) || hostname.startsWith('[')
 }
 
-const KNOWN_BRANDS = [
-  { name: 'paypal', domains: ['paypal.com'] },
-  { name: 'google', domains: ['google.com'] },
-  { name: 'facebook', domains: ['facebook.com'] },
-]
+// Corta el host en palabras: "www.netflix-pagos.com" → ["www", "netflix", "pagos", "com"].
+function splitIntoWords(hostname: string): string[] {
+  return hostname.split(/[.-]/)
+}
+
+function isOfficialBrandDomain(registrableDomain: string): boolean {
+  return KNOWN_BRANDS.some((brand) => brand.domains.includes(registrableDomain))
+}
+
+function canImpersonateBrands(parsed: ParsedUrl, brand: Brand): boolean {
+  return (
+    !RESTRICTED_SUFFIXES.includes(parsed.publicSuffix) &&
+    !brand.domains.includes(parsed.registrableDomain)
+  )
+}
 
 function findImpersonatedBrand(parsed: ParsedUrl) {
+  const words = splitIntoWords(parsed.hostname)
+
   return KNOWN_BRANDS.find(
     (brand) =>
-      parsed.hostname.includes(brand.name) &&
-      !brand.domains.includes(parsed.registrableDomain),
+      canImpersonateBrands(parsed, brand) &&
+      brand.keywords.some((keyword) => words.includes(keyword)),
   )
 }
 
@@ -84,9 +97,17 @@ function findTyposquattedBrand(parsed: ParsedUrl) {
 
   return KNOWN_BRANDS.find(
     (brand) =>
-      !brand.domains.includes(parsed.registrableDomain) &&
-      levenshtein(normalizedName, brand.name) <= 2,
+      canImpersonateBrands(parsed, brand) &&
+      brand.keywords.some(
+        (keyword) =>
+          levenshtein(normalizedName, keyword) <= getMaxTypoDistance(keyword),
+      ),
   )
+}
+
+// En marcas cortas, dos letras de diferencia ya es otra palabra ("amazon" y "amazonas").
+function getMaxTypoDistance(keyword: string): number {
+  return keyword.length <= 6 ? 1 : 2
 }
 
 const FREE_HOSTING_DOMAINS = [
@@ -109,25 +130,32 @@ function isSuspiciousTld(publicSuffix: string): boolean {
   return SUSPICIOUS_TLDS.includes(publicSuffix)
 }
 
-const SUSPICIOUS_KEYWORDS = [
+// Raíces, para cubrir variantes: "segur" detecta seguro, segura y seguridad.
+const SUSPICIOUS_KEYWORD_STEMS = [
   'login',
   'signin',
-  'verify',
-  'secure',
+  'verif',
+  'secur',
+  'segur',
   'account',
-  'update',
-  'password',
-  'wallet',
-  'verificar',
   'cuenta',
-  'seguro',
-  'actualizar',
+  'update',
+  'actualiz',
+  'password',
   'clave',
+  'wallet',
   'banca',
 ]
 
-function findSuspiciousKeyword(hostname: string) {
-  return SUSPICIOUS_KEYWORDS.find((keyword) => hostname.includes(keyword))
+// Devuelve la palabra completa del dominio ("segura"), no la raíz, para el mensaje.
+function findSuspiciousKeyword(parsed: ParsedUrl) {
+  if (isOfficialBrandDomain(parsed.registrableDomain)) {
+    return undefined
+  }
+
+  return splitIntoWords(parsed.hostname).find((word) =>
+    SUSPICIOUS_KEYWORD_STEMS.some((stem) => word.includes(stem)),
+  )
 }
 
 function isPunycode(hostname: string): boolean {
@@ -207,7 +235,7 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
     })
   }
 
-  const suspiciousKeyword = findSuspiciousKeyword(parsed.hostname)
+  const suspiciousKeyword = findSuspiciousKeyword(parsed)
 
   if (suspiciousKeyword) {
     signals.push({
