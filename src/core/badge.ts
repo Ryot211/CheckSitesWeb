@@ -1,3 +1,5 @@
+export type RiskLevel = 'none' | 'low' | 'medium' | 'high'
+
 export interface Badge {
   text: string
   color: string
@@ -6,25 +8,28 @@ export interface Badge {
 const MEDIUM_RISK_THRESHOLD = 30
 const HIGH_RISK_THRESHOLD = 60
 
-const LOW_RISK_COLOR = '#CA8A04'
-const MEDIUM_RISK_COLOR = '#EA580C'
-const HIGH_RISK_COLOR = '#DC2626'
+const BADGE_COLORS: Record<RiskLevel, string> = {
+  none: '#CA8A04',
+  low: '#CA8A04',
+  medium: '#EA580C',
+  high: '#DC2626',
+}
 
-function getRiskColor(score: number): string {
+export function getRiskLevel(score: number): RiskLevel {
   if (score >= HIGH_RISK_THRESHOLD) {
-    return HIGH_RISK_COLOR
+    return 'high'
   }
 
   if (score >= MEDIUM_RISK_THRESHOLD) {
-    return MEDIUM_RISK_COLOR
+    return 'medium'
   }
 
-  return LOW_RISK_COLOR
+  return score > 0 ? 'low' : 'none'
 }
 
 export function getBadge(score: number): Badge {
   return {
     text: score > 0 ? String(score) : '',
-    color: getRiskColor(score),
+    color: BADGE_COLORS[getRiskLevel(score)],
   }
 }
