@@ -16,20 +16,27 @@ La lógica de detección vive en `src/core/` y no depende de React ni de las API
 
 ## Señales detectadas
 
-| Señal                                     | Peso | Ejemplo                                     |
-| ----------------------------------------- | ---- | ------------------------------------------- |
-| Sin HTTPS                                 | 10   | `http://ejemplo.com`                        |
-| Hosting gratuito                          | 15   | `mi-tienda.vercel.app`, `usuario.github.io` |
-| Extensión de dominio de riesgo (TLD)      | 15   | `ofertas.xyz`, `promo.top`                  |
-| Dirección IP en lugar de dominio          | 30   | `http://192.168.1.10/login`                 |
-| Typosquatting (dominio mal escrito)       | 40   | `paypa1.com`, `gooogle.com`, `faceb00k.com` |
-| Suplantación de marca en un dominio ajeno | 50   | `www.paypal.com.cuenta-segura.xyz`          |
+| Señal                                     | Peso | Ejemplo                                          |
+| ----------------------------------------- | ---- | ------------------------------------------------ |
+| Sin HTTPS                                 | 10   | `http://ejemplo.com`                             |
+| Hosting gratuito                          | 15   | `mi-tienda.vercel.app`, `usuario.github.io`      |
+| Extensión de dominio de riesgo (TLD)      | 15   | `ofertas.xyz`, `promo.top`                       |
+| Exceso de guiones en el dominio           | 15   | `tienda-de-ofertas-online.com`                   |
+| Palabras gancho en el dominio             | 20   | `secure-login-banco.com`, `verificar-cuenta.com` |
+| Punycode (caracteres de otro alfabeto)    | 25   | `аpple.com` (con "а" cirílica)                   |
+| Dirección IP en lugar de dominio          | 30   | `http://192.168.1.10/login`                      |
+| Destino oculto con `@`                    | 35   | `https://www.paypal.com@cuenta-segura.xyz`       |
+| Typosquatting (dominio mal escrito)       | 40   | `paypa1.com`, `gooogle.com`, `faceb00k.com`      |
+| Suplantación de marca en un dominio ajeno | 50   | `www.paypal.com.cuenta-segura.xyz`               |
 
 ### Detalles técnicos
 
 - **Dominio registrado:** se obtiene con [`tldts`](https://github.com/remusao/tldts), que usa la Public Suffix List. Así, `checkout.paypal.com` se reconoce como legítimo y `paypal.com.cuenta-segura.xyz` no.
 - **Hosting gratuito:** se aprovecha que `tldts`, por defecto, trata dominios como `vercel.app` o `github.io` como el dominio registrado.
 - **Typosquatting:** se normalizan los homoglifos (`0 → o`, `1 → l`, `rn → m`, etc.) y luego se mide la [distancia de Levenshtein](https://es.wikipedia.org/wiki/Distancia_de_Levenshtein) contra una lista de marcas conocidas.
+- **Destino oculto con `@`:** el parser de URL interpreta todo lo que está antes del `@` como usuario, así que basta con revisar si la URL trae uno.
+- **Palabras gancho:** se buscan solo en el dominio, no en la ruta, porque casi todos los sitios legítimos tienen rutas como `/login`.
+- **Punycode:** el parser de URL convierte los caracteres no latinos al formato `xn--`, que es lo que se detecta. Al contar guiones, ese prefijo se descarta.
 
 ## Stack
 
@@ -78,7 +85,7 @@ src/
 - [x] Popup que muestra la URL de la pestaña activa
 - [x] Analizador de URL con puntaje y motivos
 - [x] Señales de hosting gratuito y TLDs de riesgo
-- [ ] Más señales de URL: palabras gancho, punycode, `@` en la URL, exceso de guiones
+- [x] Señales de palabras gancho, punycode, `@` en la URL y exceso de guiones
 - [ ] Content script que analiza el contenido de la página (formularios de login, tarjetas)
 - [ ] Service worker con indicador de riesgo en el ícono
 - [ ] Backend para consultas de WHOIS, certificados SSL y listas negras
@@ -89,6 +96,8 @@ src/
 - La lista de marcas y dominios oficiales es reducida.
 - El umbral de typosquatting es fijo, lo que puede generar falsos positivos con marcas de nombre corto.
 - Algunas URLs pueden activar varias señales relacionadas a la vez, lo que infla el puntaje.
+- Las palabras gancho no consideran los dominios oficiales: `accounts.google.com` se marca por contener "account".
+- El punycode también se activa con dominios legítimos con ñ o tildes, como `españa.com`.
 
 ## Autor
 
