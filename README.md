@@ -6,15 +6,19 @@ Extensión de navegador (Chrome / Edge) que analiza la pestaña actual y calcula
 
 ## ¿Cómo funciona?
 
-Un sitio falso rara vez se delata con una sola señal. El detector **suma señales sospechosas**, cada una con un peso, y devuelve un puntaje de 0 a 100 junto con los motivos.
+Un sitio falso rara vez se delata con una sola señal. El detector **suma señales sospechosas** de la dirección y del contenido de la página, cada una con un peso, y devuelve un puntaje de 0 a 100 junto con los motivos.
 
 ```
-Pestaña activa → URL → Analizador (funciones puras) → Puntaje + motivos → Popup
+Pestaña activa
+  ├─► URL ─────────► Analizador de URL ───────┐
+  └─► Recolector ──► Analizador de página ────┤
+                                              └─► Puntaje + motivos ─► Popup
 ```
 
-La lógica de detección vive en `src/core/` y no depende de React ni de las APIs del navegador, por lo que se prueba de forma aislada con tests unitarios.
+- **Recolector** (`src/content/`): se inyecta en la página solo cuando el usuario hace clic en el ícono y cuenta campos de contraseña, campos de tarjeta y destinos de formularios. No toma decisiones.
+- **Analizadores** (`src/core/`): funciones puras que deciden qué es sospechoso. No dependen de React ni de las APIs del navegador, por lo que se prueban de forma aislada con tests unitarios.
 
-## Señales detectadas
+## Señales de la URL
 
 | Señal                                     | Peso | Ejemplo                                          |
 | ----------------------------------------- | ---- | ------------------------------------------------ |
@@ -29,6 +33,16 @@ La lógica de detección vive en `src/core/` y no depende de React ni de las API
 | Typosquatting (dominio mal escrito)       | 40   | `paypa1.com`, `gooogle.com`, `faceb00k.com`      |
 | Suplantación de marca en un dominio ajeno | 50   | `www.paypal.com.cuenta-segura.xyz`               |
 
+## Señales del contenido de la página
+
+| Señal                               | Peso | Qué detecta                                                           |
+| ----------------------------------- | ---- | --------------------------------------------------------------------- |
+| Campo de contraseña                 | 10   | Un `<input type="password">`                                          |
+| Campo de tarjeta                    | 20   | Inputs con `autocomplete="cc-number"` o "card"/"tarjeta" en el nombre |
+| Formulario que envía a otro dominio | 35   | Un `<form>` cuyo `action` apunta a un dominio distinto al del sitio   |
+
+El campo de contraseña pesa poco por sí solo, porque todo login legítimo lo tiene. Su valor está en sumarse a una URL sospechosa.
+
 ### Detalles técnicos
 
 - **Dominio registrado:** se obtiene con [`tldts`](https://github.com/remusao/tldts), que usa la Public Suffix List. Así, `checkout.paypal.com` se reconoce como legítimo y `paypal.com.cuenta-segura.xyz` no.
@@ -37,6 +51,8 @@ La lógica de detección vive en `src/core/` y no depende de React ni de las API
 - **Destino oculto con `@`:** el parser de URL interpreta todo lo que está antes del `@` como usuario, así que basta con revisar si la URL trae uno.
 - **Palabras gancho:** se buscan solo en el dominio, no en la ruta, porque casi todos los sitios legítimos tienen rutas como `/login`.
 - **Punycode:** el parser de URL convierte los caracteres no latinos al formato `xn--`, que es lo que se detecta. Al contar guiones, ese prefijo se descarta.
+- **Formularios a otro dominio:** se compara el dominio registrado del `action` con el de la página, así un banco que envía su login a `auth.banco.com` desde `www.banco.com` no se marca.
+- **Inyección bajo demanda:** el recolector se ejecuta con `chrome.scripting.executeScript` en lugar de un content script permanente. La extensión solo pide los permisos `activeTab` y `scripting`, y no lee ninguna página hasta que el usuario hace clic.
 
 ## Stack
 
@@ -73,10 +89,14 @@ npm run format   # Formatea el código con Prettier
 public/
   manifest.json          # Configuración de la extensión
 src/
+  content/               # Código que se ejecuta dentro de la página analizada
+    collect-page-facts.ts
   core/                  # Lógica de detección (pura, sin dependencias del navegador)
-    url-analyzer.ts
-    url-analyzer.test.ts
+    url-analyzer.ts      # Señales de la URL
+    page-analyzer.ts     # Señales del contenido de la página
+    score.ts             # Cálculo del puntaje final
     levenshtein.ts
+    *.test.ts
   App.tsx                # Popup
 ```
 
@@ -86,7 +106,7 @@ src/
 - [x] Analizador de URL con puntaje y motivos
 - [x] Señales de hosting gratuito y TLDs de riesgo
 - [x] Señales de palabras gancho, punycode, `@` en la URL y exceso de guiones
-- [ ] Content script que analiza el contenido de la página (formularios de login, tarjetas)
+- [x] Análisis del contenido de la página (contraseñas, tarjetas, formularios a otro dominio)
 - [ ] Service worker con indicador de riesgo en el ícono
 - [ ] Backend para consultas de WHOIS, certificados SSL y listas negras
 - [ ] Modelo de machine learning
@@ -98,6 +118,8 @@ src/
 - Algunas URLs pueden activar varias señales relacionadas a la vez, lo que infla el puntaje.
 - Las palabras gancho no consideran los dominios oficiales: `accounts.google.com` se marca por contener "account".
 - El punycode también se activa con dominios legítimos con ñ o tildes, como `españa.com`.
+- La detección de campos de tarjeta se basa en nombres de atributos, por lo que un sitio puede evitarla usando nombres genéricos.
+- El navegador no permite inyectar el recolector en algunas páginas, como la Chrome Web Store. En esos casos solo se analiza la URL.
 
 ## Autor
 
