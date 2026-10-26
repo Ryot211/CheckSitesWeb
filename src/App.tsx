@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { RiskReport } from './components/RiskReport'
 import { collectPageFacts } from './content/collect-page-facts'
 import { analyzePage, type PageFacts } from './core/page-analyzer'
 import { calculateScore } from './core/score'
@@ -37,45 +38,39 @@ function App() {
     inspectActiveTab()
   }, [])
 
-  if (url === null) {
-    return (
-      <main>
-        <p>Analizando...</p>
-      </main>
-    )
-  }
+  return (
+    <main className="popup">
+      <header className="pill popup-header">
+        <img src="/icons/icon-32.png" alt="" width={18} height={18} />
+        <span>Detector de sitios falsos</span>
+      </header>
 
-  if (!url.startsWith('http')) {
-    return (
-      <main>
-        <h1>Detector de sitios falsos</h1>
-        <p>Esta página no se puede analizar.</p>
-      </main>
-    )
-  }
+      {url === null && <p className="glass status">Analizando...</p>}
 
+      {url !== null && !url.startsWith('http') && (
+        <p className="glass status">
+          Esta página es interna del navegador y no se puede analizar.
+        </p>
+      )}
+
+      {url !== null && url.startsWith('http') && (
+        <RiskReport url={url} {...getAnalysis(url, pageFacts)} />
+      )}
+
+      <footer className="pill popup-footer">
+        Análisis local: nada sale de tu navegador.
+      </footer>
+    </main>
+  )
+}
+
+function getAnalysis(url: string, pageFacts: PageFacts | null) {
   const signals = [
     ...analyzeUrl(url).signals,
     ...(pageFacts ? analyzePage(pageFacts, url).signals : []),
   ]
-  const score = calculateScore(signals)
 
-  return (
-    <main>
-      <h1>Detector de sitios falsos</h1>
-      <p className="url">{url}</p>
-      <p>Riesgo: {score}/100</p>
-      {signals.length === 0 ? (
-        <p>No se detectaron señales sospechosas.</p>
-      ) : (
-        <ul>
-          {signals.map((signal) => (
-            <li key={signal.id}>{signal.message}</li>
-          ))}
-        </ul>
-      )}
-    </main>
-  )
+  return { signals, score: calculateScore(signals) }
 }
 
 export default App
