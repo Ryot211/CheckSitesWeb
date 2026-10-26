@@ -4,6 +4,12 @@ Extensión de navegador (Chrome / Edge) que analiza la pestaña actual y calcula
 
 > 🚧 Proyecto en desarrollo activo. Se construye por etapas, priorizando entender cada concepto antes de agregar el siguiente.
 
+<p align="center">
+  <img src="docs/popup.png" alt="Popup del detector mostrando riesgo alto para un sitio que suplanta a PayPal, con cada señal y su peso" width="320" />
+  <br />
+  <sub>Ejemplo con un sitio de prueba que suplanta a PayPal.</sub>
+</p>
+
 ## ¿Cómo funciona?
 
 Un sitio falso rara vez se delata con una sola señal. El detector **suma señales sospechosas** de la dirección y del contenido de la página, cada una con un peso, y devuelve un puntaje de 0 a 100 junto con los motivos.
@@ -109,12 +115,32 @@ npm run lint     # Revisa el código con ESLint
 npm run format   # Formatea el código con Prettier
 ```
 
+Para regenerar los íconos de la extensión (escudo con lupa) en sus cuatro tamaños:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/generate-icons.ps1
+```
+
+## Diseño del popup
+
+- **Veredicto primero:** el nivel de riesgo y el puntaje se leen de un vistazo, con una barra que se llena con el color del nivel.
+- **La cuenta a la vista:** cada señal muestra cuánto sumó al puntaje, ordenadas de mayor a menor peso. Si la suma supera 100, el popup lo aclara.
+- **Estilo sobrio:** paneles de vidrio esmerilado sobre un fondo difuminado, con tonos apagados. La insignia del ícono conserva colores vivos para destacar en la barra del navegador.
+- **Contenedor / presentacional:** `App.tsx` obtiene los datos de la pestaña y `RiskReport.tsx` solo los muestra.
+
 ## Estructura
 
 ```
+docs/
+  popup.png              # Captura para este README
 public/
   manifest.json          # Configuración de la extensión
+  icons/                 # Íconos PNG generados por el script
+scripts/
+  generate-icons.ps1     # Dibuja los íconos de la extensión
 src/
+  components/
+    RiskReport.tsx       # Presentación del análisis en el popup
   content/               # Código que se ejecuta dentro de la página analizada
     collect-page-facts.ts
   core/                  # Lógica de detección (pura, sin dependencias del navegador)
@@ -124,7 +150,7 @@ src/
     badge.ts             # Texto y color de la insignia
     levenshtein.ts
     *.test.ts
-  App.tsx                # Popup
+  App.tsx                # Popup: obtiene los datos de la pestaña
   background.ts          # Service worker que actualiza la insignia
 ```
 
@@ -136,7 +162,7 @@ src/
 - [x] Señales de palabras gancho, punycode, `@` en la URL y exceso de guiones
 - [x] Análisis del contenido de la página (contraseñas, tarjetas, formularios a otro dominio)
 - [x] Service worker con indicador de riesgo en el ícono
-- [ ] Pulido: ícono propio, diseño del popup y limpieza de la plantilla
+- [x] Pulido: ícono propio, diseño del popup y limpieza de la plantilla
 - [ ] Backend para consultas de WHOIS, certificados SSL y listas negras
 - [ ] Modelo de machine learning
 
