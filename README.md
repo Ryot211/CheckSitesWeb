@@ -43,6 +43,31 @@ Pestaña activa
 
 El campo de contraseña pesa poco por sí solo, porque todo login legítimo lo tiene. Su valor está en sumarse a una URL sospechosa.
 
+## Insignia de riesgo
+
+Un service worker analiza la URL de cada pestaña en segundo plano y muestra el puntaje sobre el ícono de la extensión, sin necesidad de abrir el popup. Cada pestaña tiene su propia insignia.
+
+| Puntaje  | Insignia     |
+| -------- | ------------ |
+| 0        | Sin insignia |
+| 1 a 29   | 🟡 Amarillo  |
+| 30 a 59  | 🟠 Naranja   |
+| 60 o más | 🔴 Rojo      |
+
+La insignia refleja solo el análisis de la URL. El popup muestra el análisis completo, que además incluye el contenido de la página, por lo que su puntaje puede ser mayor.
+
+## Privacidad y permisos
+
+Todo el análisis se hace **localmente**: ninguna URL ni dato de la página sale del navegador.
+
+| Permiso     | Para qué se usa                                                          |
+| ----------- | ------------------------------------------------------------------------ |
+| `tabs`      | Leer la URL de cada pestaña para actualizar la insignia automáticamente  |
+| `activeTab` | Acceder a la pestaña actual solo cuando el usuario hace clic en el ícono |
+| `scripting` | Inyectar el recolector en esa pestaña para analizar su contenido         |
+
+Se descartó pedir acceso a todos los sitios (`<all_urls>`) para analizar el contenido de forma automática: para una herramienta de seguridad, solicitar el permiso más amplio de todos sería contradictorio.
+
 ### Detalles técnicos
 
 - **Dominio registrado:** se obtiene con [`tldts`](https://github.com/remusao/tldts), que usa la Public Suffix List. Así, `checkout.paypal.com` se reconoce como legítimo y `paypal.com.cuenta-segura.xyz` no.
@@ -52,7 +77,8 @@ El campo de contraseña pesa poco por sí solo, porque todo login legítimo lo t
 - **Palabras gancho:** se buscan solo en el dominio, no en la ruta, porque casi todos los sitios legítimos tienen rutas como `/login`.
 - **Punycode:** el parser de URL convierte los caracteres no latinos al formato `xn--`, que es lo que se detecta. Al contar guiones, ese prefijo se descarta.
 - **Formularios a otro dominio:** se compara el dominio registrado del `action` con el de la página, así un banco que envía su login a `auth.banco.com` desde `www.banco.com` no se marca.
-- **Inyección bajo demanda:** el recolector se ejecuta con `chrome.scripting.executeScript` en lugar de un content script permanente. La extensión solo pide los permisos `activeTab` y `scripting`, y no lee ninguna página hasta que el usuario hace clic.
+- **Inyección bajo demanda:** el recolector se ejecuta con `chrome.scripting.executeScript` en lugar de un content script permanente, así que no lee el contenido de ninguna página hasta que el usuario hace clic.
+- **Service worker:** escucha `chrome.tabs.onUpdated` y reutiliza el mismo `analyzeUrl` del popup. Vite lo compila como una entrada aparte con nombre fijo (`background.js`), porque el manifest no admite nombres con hash.
 
 ## Stack
 
@@ -95,9 +121,11 @@ src/
     url-analyzer.ts      # Señales de la URL
     page-analyzer.ts     # Señales del contenido de la página
     score.ts             # Cálculo del puntaje final
+    badge.ts             # Texto y color de la insignia
     levenshtein.ts
     *.test.ts
   App.tsx                # Popup
+  background.ts          # Service worker que actualiza la insignia
 ```
 
 ## Hoja de ruta
@@ -107,7 +135,8 @@ src/
 - [x] Señales de hosting gratuito y TLDs de riesgo
 - [x] Señales de palabras gancho, punycode, `@` en la URL y exceso de guiones
 - [x] Análisis del contenido de la página (contraseñas, tarjetas, formularios a otro dominio)
-- [ ] Service worker con indicador de riesgo en el ícono
+- [x] Service worker con indicador de riesgo en el ícono
+- [ ] Pulido: ícono propio, diseño del popup y limpieza de la plantilla
 - [ ] Backend para consultas de WHOIS, certificados SSL y listas negras
 - [ ] Modelo de machine learning
 
