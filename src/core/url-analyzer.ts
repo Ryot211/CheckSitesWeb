@@ -1,5 +1,6 @@
 import { getDomain, getDomainWithoutSuffix, getPublicSuffix } from 'tldts'
 import { levenshtein } from './levenshtein'
+import { calculateScore } from './score'
 
 export interface Signal {
   id: string
@@ -234,10 +235,5 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
     })
   }
 
-  const score = Math.min(
-    100,
-    signals.reduce((sum, signal) => sum + signal.weight, 0),
-  )
-
-  return { score, signals }
+  return { score: calculateScore(signals), signals }
 }
