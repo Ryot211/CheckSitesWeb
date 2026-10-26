@@ -135,4 +135,35 @@ describe('analyzeUrl', () => {
 
     expect(result.signals.map((s) => s.id)).not.toContain('suspicious-keyword')
   })
+
+  it('marca los dominios con caracteres de otro alfabeto', () => {
+    // а es la "а" cirílica: se ve igual que la "a" latina
+    const result = analyzeUrl('https://аpple.com')
+
+    expect(result.signals.map((s) => s.id)).toContain('punycode')
+  })
+
+  it('no marca los dominios con letras normales', () => {
+    const result = analyzeUrl('https://apple.com')
+
+    expect(result.signals.map((s) => s.id)).not.toContain('punycode')
+  })
+
+  it('marca los dominios con exceso de guiones', () => {
+    const result = analyzeUrl('https://tienda-de-ofertas-online.com')
+
+    expect(result.signals.map((s) => s.id)).toContain('many-hyphens')
+  })
+
+  it('no marca los dominios con pocos guiones', () => {
+    const result = analyzeUrl('https://mi-tienda-online.com')
+
+    expect(result.signals.map((s) => s.id)).not.toContain('many-hyphens')
+  })
+
+  it('no cuenta los guiones del prefijo de punycode', () => {
+    const result = analyzeUrl('https://аpple.com')
+
+    expect(result.signals.map((s) => s.id)).not.toContain('many-hyphens')
+  })
 })

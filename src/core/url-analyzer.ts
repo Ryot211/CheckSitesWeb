@@ -129,6 +129,18 @@ function findSuspiciousKeyword(hostname: string) {
   return SUSPICIOUS_KEYWORDS.find((keyword) => hostname.includes(keyword))
 }
 
+function isPunycode(hostname: string): boolean {
+  return hostname.includes('xn--')
+}
+
+const MAX_HYPHENS = 2
+
+function hasManyHyphens(hostname: string): boolean {
+  const hyphenCount = hostname.replaceAll('xn--', '').split('-').length - 1
+
+  return hyphenCount > MAX_HYPHENS
+}
+
 export function analyzeUrl(rawUrl: string): UrlAnalysis {
   const parsed = parseUrl(rawUrl)
   const signals: Signal[] = []
@@ -201,6 +213,24 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
       id: 'suspicious-keyword',
       weight: 20,
       message: `El dominio contiene la palabra "${suspiciousKeyword}", frecuente en sitios fraudulentos.`,
+    })
+  }
+
+  if (isPunycode(parsed.hostname)) {
+    signals.push({
+      id: 'punycode',
+      weight: 25,
+      message:
+        'El dominio usa caracteres especiales que pueden imitar letras normales.',
+    })
+  }
+
+  if (hasManyHyphens(parsed.hostname)) {
+    signals.push({
+      id: 'many-hyphens',
+      weight: 15,
+      message:
+        'El dominio tiene demasiados guiones, algo común en sitios fraudulentos.',
     })
   }
 
