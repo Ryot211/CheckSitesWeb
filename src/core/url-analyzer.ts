@@ -108,6 +108,27 @@ function isSuspiciousTld(publicSuffix: string): boolean {
   return SUSPICIOUS_TLDS.includes(publicSuffix)
 }
 
+const SUSPICIOUS_KEYWORDS = [
+  'login',
+  'signin',
+  'verify',
+  'secure',
+  'account',
+  'update',
+  'password',
+  'wallet',
+  'verificar',
+  'cuenta',
+  'seguro',
+  'actualizar',
+  'clave',
+  'banca',
+]
+
+function findSuspiciousKeyword(hostname: string) {
+  return SUSPICIOUS_KEYWORDS.find((keyword) => hostname.includes(keyword))
+}
+
 export function analyzeUrl(rawUrl: string): UrlAnalysis {
   const parsed = parseUrl(rawUrl)
   const signals: Signal[] = []
@@ -170,6 +191,16 @@ export function analyzeUrl(rawUrl: string): UrlAnalysis {
       id: 'credentials-in-url',
       weight: 35,
       message: 'La URL oculta el destino real usando un "@".',
+    })
+  }
+
+  const suspiciousKeyword = findSuspiciousKeyword(parsed.hostname)
+
+  if (suspiciousKeyword) {
+    signals.push({
+      id: 'suspicious-keyword',
+      weight: 20,
+      message: `El dominio contiene la palabra "${suspiciousKeyword}", frecuente en sitios fraudulentos.`,
     })
   }
 

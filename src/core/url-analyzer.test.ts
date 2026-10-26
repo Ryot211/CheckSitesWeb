@@ -117,4 +117,22 @@ describe('analyzeUrl', () => {
 
     expect(result.signals.map((s) => s.id)).toContain('credentials-in-url')
   })
+
+  it('marca los dominios con palabras gancho', () => {
+    const result = analyzeUrl('https://secure-login-banco.com')
+
+    expect(result.signals.map((s) => s.id)).toContain('suspicious-keyword')
+  })
+
+  it('marca las palabras gancho en español', () => {
+    const result = analyzeUrl('https://verificar-cuenta.com')
+
+    expect(result.signals.map((s) => s.id)).toContain('suspicious-keyword')
+  })
+
+  it('no marca las palabras gancho que están en la ruta', () => {
+    const result = analyzeUrl('https://www.google.com/login')
+
+    expect(result.signals.map((s) => s.id)).not.toContain('suspicious-keyword')
+  })
 })
