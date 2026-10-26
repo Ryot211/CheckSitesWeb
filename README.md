@@ -26,18 +26,36 @@ Pestaña activa
 
 ## Señales de la URL
 
-| Señal                                     | Peso | Ejemplo                                          |
-| ----------------------------------------- | ---- | ------------------------------------------------ |
-| Sin HTTPS                                 | 10   | `http://ejemplo.com`                             |
-| Hosting gratuito                          | 15   | `mi-tienda.vercel.app`, `usuario.github.io`      |
-| Extensión de dominio de riesgo (TLD)      | 15   | `ofertas.xyz`, `promo.top`                       |
-| Exceso de guiones en el dominio           | 15   | `tienda-de-ofertas-online.com`                   |
-| Palabras gancho en el dominio             | 20   | `secure-login-banco.com`, `verificar-cuenta.com` |
-| Punycode (caracteres de otro alfabeto)    | 25   | `аpple.com` (con "а" cirílica)                   |
-| Dirección IP en lugar de dominio          | 30   | `http://192.168.1.10/login`                      |
-| Destino oculto con `@`                    | 35   | `https://www.paypal.com@cuenta-segura.xyz`       |
-| Typosquatting (dominio mal escrito)       | 40   | `paypa1.com`, `gooogle.com`, `faceb00k.com`      |
-| Suplantación de marca en un dominio ajeno | 50   | `www.paypal.com.cuenta-segura.xyz`               |
+| Señal                                     | Peso | Ejemplo                                                          |
+| ----------------------------------------- | ---- | ---------------------------------------------------------------- |
+| Sin HTTPS                                 | 10   | `http://ejemplo.com`                                             |
+| Hosting gratuito                          | 15   | `mi-tienda.vercel.app`, `usuario.github.io`                      |
+| Extensión de dominio de riesgo (TLD)      | 15   | `ofertas.xyz`, `promo.top`                                       |
+| Exceso de guiones en el dominio           | 15   | `tienda-de-ofertas-online.com`                                   |
+| Palabras gancho en el dominio             | 20   | `secure-login-banco.com`, `cuenta-segura.com`                    |
+| Punycode (caracteres de otro alfabeto)    | 25   | `аpple.com` (con "а" cirílica)                                   |
+| Dirección IP en lugar de dominio          | 30   | `http://192.168.1.10/login`                                      |
+| Destino oculto con `@`                    | 35   | `https://www.paypal.com@cuenta-segura.xyz`                       |
+| Typosquatting (dominio mal escrito)       | 40   | `paypa1.com`, `bancopichlncha.com`, `amaz0n.com`                 |
+| Suplantación de marca en un dominio ajeno | 50   | `www.paypal.com.cuenta-segura.xyz`, `pichincha-banca-segura.com` |
+
+### Marcas protegidas
+
+Las reglas de suplantación y typosquatting reconocen 13 marcas, definidas en `src/core/brands.ts`:
+
+- **Servicios globales:** PayPal, Google, Facebook, Instagram, WhatsApp, Microsoft, Amazon, Netflix y Mercado Libre.
+- **Bancos de Ecuador:** Banco Pichincha, Banco Guayaquil, Produbanco y Banco del Pacífico.
+
+Cada marca tiene sus palabras clave y sus dominios oficiales. Los dominios de los bancos se verificaron uno por uno, porque un dominio oficial faltante haría que el sitio real del banco se marque como riesgo.
+
+### Precisión medida
+
+La extensión se evaluó con 14 URLs reales y falsas. Los casos clave quedaron incorporados a los tests para evitar regresiones:
+
+| Versión | Sitios falsos detectados | Falsos positivos en sitios legítimos |
+| ------- | ------------------------ | ------------------------------------ |
+| v1.0    | 2 de 8                   | 1 (`accounts.google.com`)            |
+| v1.1    | 8 de 8                   | 0                                    |
 
 ## Señales del contenido de la página
 
@@ -78,9 +96,10 @@ Se descartó pedir acceso a todos los sitios (`<all_urls>`) para analizar el con
 
 - **Dominio registrado:** se obtiene con [`tldts`](https://github.com/remusao/tldts), que usa la Public Suffix List. Así, `checkout.paypal.com` se reconoce como legítimo y `paypal.com.cuenta-segura.xyz` no.
 - **Hosting gratuito:** se aprovecha que `tldts`, por defecto, trata dominios como `vercel.app` o `github.io` como el dominio registrado.
-- **Typosquatting:** se normalizan los homoglifos (`0 → o`, `1 → l`, `rn → m`, etc.) y luego se mide la [distancia de Levenshtein](https://es.wikipedia.org/wiki/Distancia_de_Levenshtein) contra una lista de marcas conocidas.
+- **Typosquatting:** se normalizan los homoglifos (`0 → o`, `1 → l`, `rn → m`, etc.) y luego se mide la [distancia de Levenshtein](https://es.wikipedia.org/wiki/Distancia_de_Levenshtein) contra las marcas conocidas. El umbral depende del largo: 1 letra de diferencia para marcas de hasta 6 letras y 2 para las más largas, así "amazonas" no se confunde con "amazon".
+- **Suplantación de marca:** el dominio se divide en palabras (por puntos y guiones) y la marca tiene que aparecer como palabra completa. Las reglas de marca no se aplican a sufijos de registro restringido, como `.gob.ec` o `.edu.ec`, que solo pueden obtener entidades verificadas.
 - **Destino oculto con `@`:** el parser de URL interpreta todo lo que está antes del `@` como usuario, así que basta con revisar si la URL trae uno.
-- **Palabras gancho:** se buscan solo en el dominio, no en la ruta, porque casi todos los sitios legítimos tienen rutas como `/login`.
+- **Palabras gancho:** se buscan solo en el dominio, no en la ruta, porque casi todos los sitios legítimos tienen rutas como `/login`. Se comparan por raíz (`segur` cubre seguro, segura y seguridad) y no se aplican a los dominios oficiales de las marcas conocidas.
 - **Punycode:** el parser de URL convierte los caracteres no latinos al formato `xn--`, que es lo que se detecta. Al contar guiones, ese prefijo se descarta.
 - **Formularios a otro dominio:** se compara el dominio registrado del `action` con el de la página, así un banco que envía su login a `auth.banco.com` desde `www.banco.com` no se marca.
 - **Inyección bajo demanda:** el recolector se ejecuta con `chrome.scripting.executeScript` en lugar de un content script permanente, así que no lee el contenido de ninguna página hasta que el usuario hace clic.
@@ -145,6 +164,7 @@ src/
     collect-page-facts.ts
   core/                  # Lógica de detección (pura, sin dependencias del navegador)
     url-analyzer.ts      # Señales de la URL
+    brands.ts            # Marcas conocidas y sus dominios oficiales
     page-analyzer.ts     # Señales del contenido de la página
     score.ts             # Cálculo del puntaje final
     badge.ts             # Texto y color de la insignia
@@ -163,15 +183,16 @@ src/
 - [x] Análisis del contenido de la página (contraseñas, tarjetas, formularios a otro dominio)
 - [x] Service worker con indicador de riesgo en el ícono
 - [x] Pulido: ícono propio, diseño del popup y limpieza de la plantilla
+- [x] v1.1: bancos de Ecuador, coincidencia por palabra completa y menos falsos positivos
 - [ ] Backend para consultas de WHOIS, certificados SSL y listas negras
 - [ ] Modelo de machine learning
 
 ## Limitaciones conocidas
 
-- La lista de marcas y dominios oficiales es reducida.
-- El umbral de typosquatting es fijo, lo que puede generar falsos positivos con marcas de nombre corto.
+- La lista de marcas es limitada: una marca que no está en `brands.ts` no se protege contra suplantación ni typosquatting.
+- Algunas marcas tienen más dominios oficiales que los registrados; un dominio oficial faltante se marcaría como riesgo.
 - Algunas URLs pueden activar varias señales relacionadas a la vez, lo que infla el puntaje.
-- Las palabras gancho no consideran los dominios oficiales: `accounts.google.com` se marca por contener "account".
+- Las palabras gancho por raíz pueden marcar sitios legítimos, por ejemplo una aseguradora cuyo dominio contiene "seguros".
 - El punycode también se activa con dominios legítimos con ñ o tildes, como `españa.com`.
 - La detección de campos de tarjeta se basa en nombres de atributos, por lo que un sitio puede evitarla usando nombres genéricos.
 - El navegador no permite inyectar el recolector en algunas páginas, como la Chrome Web Store. En esos casos solo se analiza la URL.
